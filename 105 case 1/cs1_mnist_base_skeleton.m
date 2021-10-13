@@ -62,8 +62,8 @@ imagesc(testimage'); % this command plots an array as an image.  Type 'help imag
 
 %% This next section of code calls the three functions you are asked to specify
 
-k= ; % set k
-max_iter= ; % set the number of iterations of the algorithm
+k= 20; % set k
+max_iter= 10; % set the number of iterations of the algorithm
 
 %% The next line initializes the centroids.  Look at the initialize_centroids()
 % function, which is specified further down this file.
@@ -75,18 +75,76 @@ centroids=initialize_centroids(train,k);
 cost_iteration = zeros(max_iter, 1);
 
 %% This for-loop enacts the k-means algorithm
-
+% Iterate for designated times
+ iteration =0;
 for iter=1:max_iter
+    iteration = iteration +1
+% Iterate through all of the points
+train479 = [];
+train479_store = [];
+    for in = 1: size(train, 1)
+        [train(in, 785), vec_distance] = assign_vector_to_centroid(train(in, (1:784)), centroids(:, (1:784)));
+        if (train(in, 785)~=4 && train(in, 785)~=7 && train(in, 785)~=9)
+            cost_iteration(iter, 1) = cost_iteration(iter, 1) + vec_distance;
+            continue;
+        end
+        train479 = [train479; in];  % store the index of where in the row of the train the vector of 4 or 7 or 9 is stored
+        train479_store = [train479_store; train(in, :)]; % store the the vector of 4 or 7 or 9 in the right order
+    end
     
-      % FILL THIS IN!
+    centroids = update_Centroids(train, k);
+    centroid_labels = auto_generate_labels(trainsetlabels,train);
     
+    count = [sum(centroid_labels(:) == 4);  ...
+        sum(centroid_labels(:) == 7); sum(centroid_labels(:) == 9)]; % count the centroids of each 4, 7, 9 
+    total = sum(count, "All"); % count the total number of centroids
+    index_centroid479 = zeros(total, 1); % Initialize the number of centroids that equal to the total number of
+% centroids
+    centroids479 = zeros(total, 785);
+    if count(1)~=0
+        index_centroid479(1:count(1)) = find(centroid_labels==4);
+        centroids479(1:count(1), :) = initialize_centroids(train(train(:, 785)==index_centroid479(count(1)),:) ,count(1)); 
+    end        
+    
+    if count(2)~=0
+        index_centroid479( (count(1)+1) : (count(1)+count(2)) )=  find(centroid_labels==7) ;
+        centroids479((count(1)+1) : (count(1)+count(2)) , :) = initialize_centroids(train(train(:, 785)==index_centroid479(count(1)+1), : ) ,count(2));
+    end
+    
+    if count(3)~=0
+        index_centroid479( (count(1)+count(2)+1) : total)=  find(centroid_labels==9) ;
+        centroids479((count(1)+count(2)+1) : total, :) = initialize_centroids(train(train(:, 785)==index_centroid479(total), : ), count(3));
+    end
+  
+    for in = 1: size(train479, 1)
+        [train479_store(in, 785) , vec_distance] = assign_vector_to_centroid(train(train479(in), (1:784) ), ...
+            centroids479(:, (1:784) ) );
+        if 1 <= train479_store(in, 785) && train479_store(in, 785) <=count(1) % put the true index back to the train
+            % this is a 4
+                train(train479(in), 785) = index_centroid479(randi([1, count(1)]));
+        elseif count(1)< train479_store(in, 785) && train479_store(in, 785) <=(count(1)+count(2))
+                train(train479(in), 785) = index_centroid479(randi([1, count(2)]) + count(1));
+        elseif (count(1)+count(2))<train479_store(in, 785) 
+                train(train479(in), 785) = index_centroid479(randi([1, count(3)])+count(1)+count(2));
+        end
+        cost_iteration(iter, 1) = cost_iteration(iter, 1) + vec_distance;
+    end
+    % Assign to one of the new centroids
+    
+    centroids479 = update_Centroids(train479_store, total); 
+    % put the renewed centroids of 479 back to the true "centroids"
+    for in = 1 : sum(count, "All")
+         centroids(index_centroid479(in), :) = centroids479(in);     
+    end 
+
 end
+
 
 %% This section of code plots the k-means cost as a function of the number
 % of iterations
 
 figure;
-% FILL THIS IN!
+stem(cost_iteration);
 
 
 %% This next section of code will make a plot of all of the centroids
@@ -116,9 +174,9 @@ end
 
 function y=initialize_centroids(data,num_centroids)
 
-random_index=randperm(size(data,1));
+random_index=randperm(size(data,1)); % size is the number of rows; test case: size = 200; 200 random nums
 
-centroids=data(random_index(1:num_centroids),:);
+centroids=data(random_index(1:num_centroids),:); % random k rows as centroids
 
 y=centroids;
 
@@ -131,7 +189,17 @@ end
 
 function [index, vec_distance] = assign_vector_to_centroid(data,centroids)
 
-% FILL THIS IN
+    % Calculate this point's the distance with all of the centroids
+        vec_distance = norm(data - centroids(1, :));
+        index = 1;
+        for j = 2: size(centroids, 1)
+            dis = norm(data - centroids(j, :));
+            if(dis < vec_distance)
+                vec_distance= dis;
+                % Assign which centroid this point is attached to                 
+                index = j;
+            end
+        end
 
 end
 
@@ -142,7 +210,16 @@ end
 % training images.
 
 function new_centroids=update_Centroids(data,K)
+    new_centroids = [];% zeros(K,size(data, 2));
+ 
+    logic = findgroups(data(:, 785)) ;
+    new_centroids(:, (1:784)) = splitapply(@mean,data(:, (1:784)),logic) ;
+ 
+end
 
-% FILL THIS IN
+%% Function to auto generate centroid labels
 
+function centroid_labels = auto_generate_labels(trainsetlabels,train)
+    logic = findgroups(train(:, 785)) ;
+    centroid_labels = splitapply(@mode,trainsetlabels,logic);
 end

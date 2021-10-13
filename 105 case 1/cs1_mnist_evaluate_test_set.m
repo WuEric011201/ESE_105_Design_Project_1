@@ -7,7 +7,6 @@
 % AND
 % 3)'test' be established in the workspace
 
-
 % IMPORTANT!!:
 % You should save 1) and 2) in a file named 'classifierdata.mat' as part of
 % your submission.
@@ -30,7 +29,9 @@ end
 %% DESIGN AND IMPLEMENT A STRATEGY TO SET THE outliers VECTOR
 % outliers(i) should be set to 1 if the i^th entry is an outlier
 % otherwise, outliers(i) should be 0
-% FILL IN
+
+
+
 
 %% MAKE A STEM PLOT OF THE OUTLIER FLAG
 figure;
@@ -50,6 +51,16 @@ title('Predictions');
 sum(correctlabels==predictions)
 
 function [index, vec_distance] = assign_vector_to_centroid(data,centroids)
-% FILL IN
+    % Calculate this point's the distance with all of the centroids
+        vec_distance = norm(data - centroids(1, :));
+        index = 1;
+        for j = 2: size(centroids, 1)
+            dis = norm(data - centroids(j, :));
+            if(dis < vec_distance)
+                vec_distance= dis;
+                % Assign which centroid this point is attached to                 
+                index = j;
+            end
+        end
 end
 
