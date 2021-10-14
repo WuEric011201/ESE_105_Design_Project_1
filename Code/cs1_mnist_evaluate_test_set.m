@@ -17,23 +17,6 @@ outliers = zeros(200,1);
 
 distances = zeros(200, 1);
 
-test(test<128) = 0;
-test(test>=128)=255;
-
-% going to try eroding test using a up down structuring element to reduce
-% thickness. Some of the zeros are really thick.
-testMod2 = test;
- 
-for count = 1: size(test, 1)
-    imageI = reshape(test(count,[1:784]), [28 28]);
-        
-    % Dilate then erode
-    element = strel('square', 2);
-    dilated = imdilate(imageI, element);
-    erroded = imerode(dilated, element);
-    test(count, 1:784) = reshape(erroded, [1 784]);
-end
-
 % loop through the test set, figure out the predicted number
 for i = 1:200
 
@@ -88,7 +71,7 @@ hold on;
 plot(predictions,'x');
 title('Predictions');
 
-test=testMod2;
+test=testOG;
 %% The following line provides the number of instances where and entry in correctlabel is
 % equatl to the corresponding entry in prediction
 % However, remember that some of these are outliers

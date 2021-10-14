@@ -49,7 +49,7 @@ test(:,785)=zeros(200,1);
 
 figure;
 colormap('gray'); % this tells MATLAB to depict the image in grayscale
-testimage = reshape(test(9,[1:784]), [28 28]);
+testimage = reshape(test(89,[1:784]), [28 28]);
 % we are reshaping the first row of 'test', columns 1-784 (since the 785th
 % column is going to be used for storing the centroid assignment.
 imagesc(testimage'); % this command plots an array as an image.  Type 'help imagesc' to learn more.
@@ -62,9 +62,10 @@ imagesc(testimage'); % this command plots an array as an image.  Type 'help imag
 
 %% This next section of code calls the three functions you are asked to specify
 
-k= 15; % set k
-max_iter= 15; % set the number of iterations of the algorithm
-repeat = 15;
+max_iter= 10; % set the number of iterations of the algorithm
+repeat = 20;
+
+maxK = 40;
 
 
 trainOG = train;
@@ -72,10 +73,25 @@ testOG= test;
 
 train = preprocess(train);
 test = preprocess(test);
-
 %% The next line initializes the centroids.  Look at the initialize_centroids()
 % function, which is specified further down this file.
 
+%% Initialize an array that will store k-means cost at each iteration
+
+cost_iteration = zeros(max_iter, 1);
+
+%% This for-loop enacts the k-means algorithm
+% First get rid of all the lightly colored squares to reduce noise
+
+trainOG = train;
+testOG= test;
+
+train = preprocess(train);
+test = preprocess(test);
+
+distances = zeros(maxK-9, 1);
+
+for k=10: maxK
 centroids=initialize_centroids(train,k);
  
 best_centroids = centroids;
@@ -83,24 +99,6 @@ best_centroids = centroids;
 lowestDistance = Inf;
 
 centroid_labels = zeros(k, 1);
-%% Initialize an array that will store k-means cost at each iteration
-
-cost_iteration = zeros(max_iter, 1);
-
-%% This for-loop enacts the k-means algorithm
-
-% First get rid of all the lightly colored squares to reduce noise
-
-
-
-figure;
-colormap('gray'); % this tells MATLAB to depict the image in grayscale
-testimage = reshape(test(9,[1:784]), [28 28]);
-% we are reshaping the first row of 'test', columns 1-784 (since the 785th
-% column is going to be used for storing the centroid assignment.
-imagesc(testimage'); % this command plots an array as an image.  Type 'help imagesc' to learn more.
-
-
 % Repeat  this repeat number of times
 for rep = 1:repeat
     % disp(rep)
@@ -133,33 +131,16 @@ end
 
 centroids=best_centroids;
 
-centroid_labels=label_Data(train, centroids, trainsetlabels);
-%% This section of code plots the k-means cost as a function of the number
-% of iterations
+distances(k-9, 1) = lowestDistance;
 
-figure;
-% FILL THIS IN!
-axis auto;
-plot(1:max_iter, cost_iteration);
-
-%% This next section of code will make a plot of all of the centroids
-% Again, use help <functionname> to learn about the different functions
-% that are being used here.
-
-figure;
-colormap('gray');
-
-plotsize = ceil(sqrt(k));
-
-for ind=1:k
-    
-    centr=centroids(ind,[1:784]);
-    subplot(plotsize,plotsize,ind);
-    
-    imagesc(reshape(centr,[28 28])');
-    title(strcat('Centroid ',num2str(ind)))
 
 end
+
+figure;
+plot(10: maxK, distances, '-o');
+title("Cost vs K value");
+xlabel("K");
+ylabel("Total Cost");
 
 %% Function to initialize the centroids
 % This function randomly chooses k vectors from our training set and uses them to be our initial centroids
