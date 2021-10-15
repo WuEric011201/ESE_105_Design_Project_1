@@ -38,13 +38,16 @@ end
 %% DESIGN AND IMPLEMENT A STRATEGY TO SET THE outliers VECTOR
 % outliers(i) should be set to 1 if the i^th entry is an outlier
 % otherwise, outliers(i) should be 0
-% FILL IN
-iqRange = iqr(distances);
-sevenfive = prctile(distances, 75);
-twentyfive = prctile(distances, 25);
-outliers(distances>1.5*iqRange+sevenfive| distances<twentyfive-1.5*iqRange) =1;
+
+% Find the silhouette value for each image vector
+s = silhouette(testOG,predictions,'Euclidean');
+
+% Set the cutoff to be -0.15 for the outliers
+outliers(s<-0.15) =1;
 
 outlierIndexes = find(outliers==1);
+
+
 %% MAKE A STEM PLOT OF THE OUTLIER FLAG
 figure;
 % FILL IN
