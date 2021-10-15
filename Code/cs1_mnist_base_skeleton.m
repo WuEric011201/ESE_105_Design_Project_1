@@ -62,22 +62,23 @@ imagesc(testimage'); % this command plots an array as an image.  Type 'help imag
 
 %% This next section of code calls the three functions you are asked to specify
 
-k= 15; % set k
-max_iter= 15; % set the number of iterations of the algorithm
+k= 18; % set k
+max_iter= 20; % set the number of iterations of the algorithm
 repeat = 15;
 
-
+% Save the original training and test sets, the start to preprocess the
+% images so they work with k means better
 trainOG = train;
-testOG= test;
 
 train = preprocess(train);
-test = preprocess(test);
 
 %% The next line initializes the centroids.  Look at the initialize_centroids()
 % function, which is specified further down this file.
 
 centroids=initialize_centroids(train,k);
- 
+
+% Create variables to store the best centroids, set the default distance to
+% infinity and label the centroids with all zero.
 best_centroids = centroids;
  
 lowestDistance = Inf;
@@ -89,41 +90,38 @@ cost_iteration = zeros(max_iter, 1);
 
 %% This for-loop enacts the k-means algorithm
 
-% First get rid of all the lightly colored squares to reduce noise
-
-
-
-figure;
-colormap('gray'); % this tells MATLAB to depict the image in grayscale
-testimage = reshape(test(9,[1:784]), [28 28]);
-% we are reshaping the first row of 'test', columns 1-784 (since the 785th
-% column is going to be used for storing the centroid assignment.
-imagesc(testimage'); % this command plots an array as an image.  Type 'help imagesc' to learn more.
-
-
-% Repeat  this repeat number of times
+% Repeat this a certain number of times just to try getting different
+% minimals
 for rep = 1:repeat
-    % disp(rep)
+    % Make a stuck counter in case the k means takes too long to try
+    % fining a way to get cluster labels that contains all 0-9 digits.
     stuck = 0;
+    
+    % Try your best to make sure at least 1 centroid has eacah of 0-9 as
+    % its label
     while ~isequal(ismember([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], centroid_labels), ones(1, 10)) && stuck< 20
         cost_iteration = zeros(max_iter, 1);
-
         
         for iter=1:max_iter
-        %centroids(centroids<100) = 0;
         % FILL THIS IN!
             for i=1: size(train, 1)
+                % Get the distance and index of centroid, save the centroid
+                % to row 785 of train and add distance to the cost
+                % iteration
                 [train(i, 785), distance] = assign_vector_to_centroid(train(i, 1:784), centroids);
                 cost_iteration(iter, 1)=cost_iteration(iter, 1)+distance;
             end
-    
+            % update centroid location
             centroids = update_Centroids(train, k);
         end
+        % Label at the end
         centroid_labels=label_Data(train, centroids, trainsetlabels);
         
         stuck = stuck +1;
     end
-
+    
+    % If we found a new set of centroids with lowest distance we set it to
+    % be the new lowest, update distance and centroids.
     if cost_iteration(max_iter)< lowestDistance
         lowestDistance = cost_iteration(max_iter, 1);
         best_centroids = centroids;
@@ -132,7 +130,7 @@ for rep = 1:repeat
 end
 
 centroids=best_centroids;
-
+% Recalculate the labels for the best centroid
 centroid_labels=label_Data(train, centroids, trainsetlabels);
 %% This section of code plots the k-means cost as a function of the number
 % of iterations
@@ -140,7 +138,7 @@ centroid_labels=label_Data(train, centroids, trainsetlabels);
 figure;
 % FILL THIS IN!
 axis auto;
-plot(1:max_iter, cost_iteration);
+plot(1:max_iter, cost_iteration, '-o');
 
 %% This next section of code will make a plot of all of the centroids
 % Again, use help <functionname> to learn about the different functions
@@ -168,40 +166,26 @@ end
 % Note that this function takes two inputs and emits one output (y).
 
 function y=initialize_centroids(data,num_centroids)
+% The default code was not good enough for us. 
+% Initialize the centroids using k means ++ instead
 
 centroids = zeros(num_centroids, size(data, 2));
 
+% Assign first centroid to a random data point
 random_index=randperm(size(data,1));
-
 centroids(1, :)=data(random_index(1),:);
 
-% data(random_index(1), :)=[];
-
 for i = 2: num_centroids
+    % Assign all the other centroids to the data point that is the farthest
+    % away from all other centroids
     
     [index, ~] =find_farthest_distance(data(:, 1:784), centroids(1:i-1, :));
-    %disp(index)
     centroids(i, :) = data(index, :);
 end
 
 y=centroids;
 
-% centroids = zeros(num_centroids, size(data, 2));
-% 
-% counter = 0;
-% 
-% for i = 1:num_centroids
-%     cluster = find(trainsetlabels==counter);
-%     random_index=randperm(size(cluster, 1));
-%     
-%     centroids(i) = data(cluster(random_index(1)), :);
-%     counter = counter+1;
-%     if counter>9
-%         counter=0;
-%     end
-% end
-% 
-% y=centroids;
+
 
 % random_index=randperm(size(data,1));
 % 
@@ -215,19 +199,20 @@ end
 
 function [index, vec_distance] = find_farthest_distance(data, centroids)
 
-% Distances is # cen x # data
+% Distances is # cen by # data
 distances = zeros(size(centroids, 1), size(data, 1));
 for i = 1: size(centroids, 1)
     for j = 1: size(data, 1)
+        % Calculate the distance for each centroid i from data point j
         distances(i, j) = norm(centroids(i, 1:size(data, 2)) - data(j, :));
     end
 end
-% distances
+% Sum all the columns to get sum of distances of all centroids from the
+% point
 distance = sum(distances);
 
+% Find which data point is farthest from all the centroids
 [vec_distance, index] = max(distance);
-% distances = vecnorm(( ( ones(size(data, 1), 1)*centroid(1, 1:size(data, 2)) )- data )' );
-% [vec_distance, index] = max(distances);
 
 end
 
@@ -239,9 +224,9 @@ end
 function [index, vec_distance] = assign_vector_to_centroid(data,centroids)
 % FILL THIS IN
 
-% Assume the length of the centroids is at least 1
-% Assign the closest centroid and distance to be that of the first
-% closest=1;
+% Find the distances by multiplying the data by a ones vector to duplicate
+% it until it is repeated centroids # of times downwards. Subtract each of
+% these with centroid to get the norm of each and return the smallest.
 distances = vecnorm(((ones(size(centroids, 1), 1)*data)- centroids(:, 1:size(data, 2)) )' );
 [vec_distance, index]=min(distances);
 
@@ -258,6 +243,8 @@ function new_centroids=update_Centroids(data,K)
 cluster = data( :,785);
 tempCen = zeros(K, size(data, 2));
 for i=1: K
+    % Grab the data in each cluster, and sum all of them and divide it by
+    % the number of clusters for mean
     clusterI = data(cluster==i, 1:784);
     tempCen(i, 1:784)= sum(clusterI, 1)/(size(clusterI, 1));
 end
@@ -267,6 +254,7 @@ end
 %% Function to label the centroids by finding the most common label in that centroid
 
 function centroid_labels = label_Data(data, centroids, trainingLabels)
+% Grab all the cluster data
 cluster = data( :,785);
 
 K = size(centroids, 1);
@@ -274,8 +262,9 @@ K = size(centroids, 1);
 labels = zeros(K, 1);
 
 for j=1: K
+    % Take the labels from the specific cluster
     labelsI = trainingLabels(cluster==j, 1);
-    
+    % Find the most frequently appearing one to set as the cluster label.
     labels(j, 1)=mode(labelsI);
 end
 centroid_labels=labels;
@@ -284,39 +273,29 @@ end
 %% Different preprocessing methods
 
 function modifiedData= preprocess(inputData)
+    % First do a thresholding opperation. All pixels lighter than 150 are
+    % removed, reducing noise
     threshold =150;
-
     modifiedData= inputData;
-    
     modifiedData(modifiedData<threshold) = 0;
     modifiedData(modifiedData>=threshold)=255;    
     
-    
-    
     for count = 1: size(modifiedData, 1)
+        % Reshape every row into their image
         imageI = reshape(modifiedData(count,[1:784]), [28 28]);
-        
-%         element = strel('square', 1);
-%         imageI = imerode(imageI, element);
-        
-
-        
+       
+        % Perform a errosion using bwskel. Only the basic shape is left
+        % after this opperation
         element = strel('square', 3);
         binaryImage = imbinarize(imageI);
         errodedImage = bwskel(binaryImage);
         a=zeros(size(errodedImage));
         a(errodedImage==1) = 255;
+        % Rethicken the thin outline with a dilation using a 3 square
         imageI=imdilate(a, element);
-    
-
         
-        if(count ==9)
-            figure;
-            colormap('gray');
-            imagesc(imageI);
-        end
 
-        % Shave excess top pixels
+        % Shave excess top pixels by removing all black 0 rows.
         while imageI(1, :) == zeros(1, size(imageI, 2))
             imageI(1,:) = [];
         end
@@ -334,16 +313,10 @@ function modifiedData= preprocess(inputData)
         while imageI(size(imageI, 1), :) == zeros(1, size(imageI, 2))
             imageI(size(imageI, 1), :)=[];
         end
-                        
-        %size(imageI)
         
-%         while size(imageI, 2) < size(imageI, 1)
-%             imageI = [imageI, zeros(size(imageI, 1), 1)];
-%         end
-%         while size(imageI, 1) < size(imageI, 2)
-%             imageI = [zeros(1, size(imageI, 2)); imageI];
-%         end
-        
+        % Doing this specifically for exactly vertical ones. Re add the
+        % black excess space if it is a very vertical one (or else they get
+        % stretched too much)
         if size(imageI, 2)/size(imageI, 1) >3
             if size(imageI, 2)<size(imageI, 1)
                 imageI = [imageI, zeros(size(imageI, 1), size(imageI, 1)-size(imageI, 2))];
@@ -353,14 +326,14 @@ function modifiedData= preprocess(inputData)
             end
         end
         
-        %size(imageI)
-        
+        % Remake the images back into 28x28 after removing pixels
         imageI = imresize(imageI, [28 28]);
 
-        
+        % Reperform the threshold
         imageI(imageI<threshold)=0;
         imageI(imageI>=threshold)=255;
         
+        % Save it back into modified data.
         modifiedData(count, 1:784) = reshape(imageI, [1 784]);
 
     end

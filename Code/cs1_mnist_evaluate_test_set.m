@@ -12,6 +12,11 @@
 % You should save 1) and 2) in a file named 'classifierdata.mat' as part of
 % your submission.
 
+% Do same preprocess
+testOG= test;
+test = preprocess(test);
+
+
 predictions = zeros(200,1);
 outliers = zeros(200,1);
 
@@ -84,3 +89,70 @@ distances = vecnorm(((ones(size(centroids, 1), 1)*data)- centroids(:, 1:size(dat
 
 end
 
+%% Modification function from before
+function modifiedData= preprocess(inputData)
+    % First do a thresholding opperation. All pixels lighter than 150 are
+    % removed, reducing noise
+    threshold =150;
+    modifiedData= inputData;
+    modifiedData(modifiedData<threshold) = 0;
+    modifiedData(modifiedData>=threshold)=255;    
+    
+    for count = 1: size(modifiedData, 1)
+        % Reshape every row into their image
+        imageI = reshape(modifiedData(count,[1:784]), [28 28]);
+       
+        % Perform a errosion using bwskel. Only the basic shape is left
+        % after this opperation
+        element = strel('square', 3);
+        binaryImage = imbinarize(imageI);
+        errodedImage = bwskel(binaryImage);
+        a=zeros(size(errodedImage));
+        a(errodedImage==1) = 255;
+        % Rethicken the thin outline with a dilation using a 3 square
+        imageI=imdilate(a, element);
+        
+
+        % Shave excess top pixels by removing all black 0 rows.
+        while imageI(1, :) == zeros(1, size(imageI, 2))
+            imageI(1,:) = [];
+        end
+        
+        % Shave excess left pixels
+        while imageI(:, 1) == zeros(size(imageI, 1), 1)
+            imageI(:, 1) = [];
+        end
+        
+        % Shave excess right pixels
+        while imageI(:, size(imageI, 2)) == zeros(size(imageI, 1), 1)
+            imageI(:, size(imageI, 2)) = [];
+        end
+       %Shave excess bottom pixels
+        while imageI(size(imageI, 1), :) == zeros(1, size(imageI, 2))
+            imageI(size(imageI, 1), :)=[];
+        end
+        
+        % Doing this specifically for exactly vertical ones. Re add the
+        % black excess space if it is a very vertical one (or else they get
+        % stretched too much)
+        if size(imageI, 2)/size(imageI, 1) >3
+            if size(imageI, 2)<size(imageI, 1)
+                imageI = [imageI, zeros(size(imageI, 1), size(imageI, 1)-size(imageI, 2))];
+            end
+            if size(imageI, 2)>size(imageI, 1)
+                imageI = [imageI; zeros(size(imageI, 2)-size(imageI, 1), size(imageI, 2))];
+            end
+        end
+        
+        % Remake the images back into 28x28 after removing pixels
+        imageI = imresize(imageI, [28 28]);
+
+        % Reperform the threshold
+        imageI(imageI<threshold)=0;
+        imageI(imageI>=threshold)=255;
+        
+        % Save it back into modified data.
+        modifiedData(count, 1:784) = reshape(imageI, [1 784]);
+
+    end
+end
